@@ -1,10 +1,16 @@
 {
   "name": "eventbridgepoc",
   "version": "1.0.0",
-  "description": "poc of eventbridge for reference in internal blog",
+  "description": "poc of event bridge for reference in internal blog",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "build": "babel src -d build && npm run lint-fix",
+    "lint-fix": "eslint . --fix",
+    "ci-clean": "rm -r ./src && rm -r ./test && find ./node_modules/ -type f -exec touch -t 201601011200 '{}' \\;",
+    "package": "aws cloudformation package --template-file ../template.yaml --s3-bucket $CLOUDFORMATION_DEPLOYMENT_BUCKET --s3-prefix chatService  --region eu-west-2 --output-template-file ../chat-packaged.yaml --profile $AWS_PROFILE",
+    "deploy": "aws cloudformation deploy --template-file ../chat-packaged.yaml --stack-name chatService --region eu-west-2 --s3-bucket $CLOUDFORMATION_DEPLOYMENT_BUCKET --s3-prefix chatService --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --profile $AWS_PROFILE",
+    "publish": "npm run package && npm run deploy && echo Finished!! 🥳"
   },
   "author": "",
   "license": "ISC"
