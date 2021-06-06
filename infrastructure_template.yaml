@@ -83,3 +83,20 @@ Resources:
                 - "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:${queueName}"
                 - queueName: chat-events
 
+  chatServiceEventBusPutEventsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: chatServiceEventBusPutEventsPolicy
+      Roles:
+        - !Ref chatServiceLambdaExecutionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "events:PutEvents"
+            Resource:
+              - !Sub
+                - "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/${eventBusName}"
+                - eventBusName: !FindInMap [ environmentSpecificValues, "STUBACCOUNTID", chatEventBusName ]
+
