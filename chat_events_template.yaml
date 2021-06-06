@@ -1,0 +1,73 @@
+# Infrastructure Template chatService Event Infrastructure
+#
+# This template contains all of the event handlers for the chat service
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Mappings:
+  environmentSpecificValues:
+    'STUB_ACCOUNT_ID':
+      environmentName: dev
+      defaultQueueMessageRetentionPeriodSeconds: 1209600
+
+Parameters:
+  CHATEVENTBUSNAME:
+    Type: String
+    Default: NOT_SUPPLIED
+    Description: chat service event bus name
+  ChatServiceLambdaExecutionRoleArn:
+    Type: String
+    Default: NOT_SUPPLIED
+    Description: chat service lambda execution role arn
+
+Resources:
+
+  chatEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref CHATEVENTBUSNAME
+
+  ChatEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      # 1209600 is 14 days in seconds
+      MessageRetentionPeriod: !FindInMap [ environmentSpecificValues, "STUB_ACCOUNT_ID", defaultQueueMessageRetentionPeriodSeconds ]
+      QueueName: chat-events
+      ReceiveMessageWaitTimeSeconds: 5
+      VisibilityTimeout: 90
+
+  publishEventToChatEventBusFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: build/adapters/event/chat/republish_events_from_chat_events_to_chat_event_bus.handler
+      Runtime: nodejs12.x
+      CodeUri: ./service/
+      Description: >-
+        RePublishes Events from the chatService incoming events queue to the chatEventBus
+      MemorySize: 128
+      Timeout: 30
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ChatEventsQueue.QueueName
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ChatEventsQueue.QueueName
+        - EventBridgePutEventsPolicy:
+            EventBusName: !Ref chatEventBus
+      Environment:
+        Variables:
+          CHAT_EVENT_BUS_NAME: !Ref chatEventBus
+          CHAT_SERVICE_EVENTS_QUEUE: !Ref ChatEventsQueue
+      Events:
+        eventAvalibleOnQueue:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ChatEventsQueue.Arn
+
+  permissionInvokeLambdaForPublishEventToEventBusFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: publishEventToChatEventBusFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "sqs.amazonaws.com"
+      SourceArn: !GetAtt ChatEventsQueue.Arn

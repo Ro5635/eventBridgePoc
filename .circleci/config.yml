@@ -1,0 +1,205 @@
+version: 2.1
+
+# This script has been boot strapped from a script I stole from a blogpost on circleCI but lost the link for
+
+parameters:
+  # This parameter is used to trigger the main workflow
+  trigger:
+    type: boolean
+    default: true
+
+  # A parameter per project in project root
+  chatService:
+    type: boolean
+    default: false
+  webApp:
+    type: boolean
+    default: false
+
+executors:
+  node:
+    docker:
+      - image: circleci/node
+
+orbs:
+  aws-cli: circleci/aws-cli@1.2.1
+  node: circleci/node@2.0.2
+  slack: circleci/slack@3.4.2
+  cypress: cypress-io/cypress@1.27.0
+
+jobs:
+  trigger-workflows:
+    executor: node
+    steps:
+      - checkout
+      - run:
+          name: Trigger workflows
+          command: chmod +x .circleci/circle_trigger.sh && .circleci/circle_trigger.sh
+
+  build:
+    parameters:
+      package_name:
+        type: string
+
+    executor: node
+    working_directory: ~/project/<< parameters.package_name >>
+
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: build
+          command: |
+            npm ci && npm run build
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - ./
+          # This has been changed to persist the entire project until a fix for chatOpsService is found
+          # paths:
+          #   - ./<< parameters.package_name >>
+
+  nodeTest:
+    parameters:
+      package_name:
+        type: string
+
+    executor: node
+    working_directory: ~/project/<< parameters.package_name >>
+
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: unitTests
+          command: npm run test
+      - store_test_results:
+          path: ./junit.xml
+
+  nodePruneProduction:
+    parameters:
+      package_name:
+        type: string
+
+    executor: node
+    working_directory: ~/project/<< parameters.package_name >>
+
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: pruneProduction
+          command: npm prune --production
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - ./<< parameters.package_name >>
+
+  cloudFormationDeployUAT:
+    parameters:
+      package_name:
+        type: string
+
+    executor: aws-cli/default
+    working_directory: ~/project/<< parameters.package_name >>
+
+    steps:
+      - aws-cli/setup:
+          aws-access-key-id: 'AWS_ACCESS_KEY_ID_UAT'
+          aws-secret-access-key: 'AWS_SECRET_ACCESS_KEY_UAT'
+          profile-name: 'uat-profile'
+      - run:
+          name: "Setup custom environment variables CLOUDFORMATION_DEPLOYMENT_BUCKET"
+          command: echo 'export CLOUDFORMATION_DEPLOYMENT_BUCKET="robert-curran-cf-templates-eu-west-2"' >> $BASH_ENV
+      - run:
+          name: "Setup custom environment variables AWS Credential Profile"
+          command: echo 'export AWS_PROFILE="uat-profile"' >> $BASH_ENV
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: pruneProduction
+          command: npm prune --production && npm run ci-clean
+      - deploy:
+          name: deployStackUAT
+          command: npm run publish
+
+#  cloudFormationDeployProd:
+#    parameters:
+#      package_name:
+#        type: string
+#
+#    executor: aws-cli/default
+#    working_directory: ~/project/<< parameters.package_name >>
+#
+#    steps:
+#      - aws-cli/setup:
+#          aws-access-key-id: 'AWS_ACCESS_KEY_ID'
+#          aws-secret-access-key: 'AWS_SECRET_ACCESS_KEY'
+#          profile-name: 'prod-profile'
+#      - run:
+#          name: "Setup custom environment variables CLOUDFORMATION_DEPLOYMENT_BUCKET"
+#          command: echo 'export CLOUDFORMATION_DEPLOYMENT_BUCKET="robert-curran-cf-templates-eu-west-2-prod"' >> $BASH_ENV
+#      - run:
+#          name: "Setup custom environment variables AWS Credential Profile"
+#          command: echo 'export AWS_PROFILE="prod-profile"' >> $BASH_ENV
+#      - attach_workspace:
+#          at: ~/project
+#      - run:
+#          name: pruneProduction
+#          command: npm prune --production && npm run ci-clean
+#      - deploy:
+#          name: deployStackProd
+#          command: npm run publish
+
+workflows:
+  version: 2
+
+  # The main workflow responsible for triggering all other workflows
+  # in which changes are detected.
+  ci:
+    when: << pipeline.parameters.trigger >>
+    jobs:
+      - trigger-workflows
+
+
+  # Workflows defined for each project.
+
+  chatService:
+    when: << pipeline.parameters.chatService >>
+    jobs:
+      - build:
+          name: chatService-build
+          package_name: chatService/service
+      - nodeTest:
+          name: chatService-nodeTest
+          package_name: chatService/service
+          requires:
+            - chatService-build
+      - nodePruneProduction:
+          name: chatService-prune
+          package_name: chatService/service
+          requires:
+            - chatService-nodeTest
+      - cloudFormationDeployUAT:
+          name: chatService-deploy-uat
+          package_name: chatService/service
+          requires:
+            - chatService-prune
+          filters:
+            branches:
+              only:
+                - prod
+#      - approveDeployToProd:
+#          name: approve-chatService-deploy-to-prod
+#          type: approval
+#          requires:
+#            - chatService-deploy-uat
+#      - cloudFormationDeployProd:
+#          name: chatService-deploy-prod
+#          package_name: chatService/service
+#          requires:
+#            - approve-chatService-deploy-to-prod
+#          filters:
+#            branches:
+#              only:
+#                - prod

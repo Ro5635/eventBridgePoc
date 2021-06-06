@@ -1,0 +1,63 @@
+# Infrastructure Template chatService
+#
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Mappings:
+  environmentSpecificValues:
+    'STUB_ACCOUNT_ID':
+      environmentName: dev
+      chatEventBusName: chatEventBus
+
+Resources:
+
+#  chatApiStack:
+#    Type: AWS::CloudFormation::Stack
+#    Properties:
+#      TemplateURL: ./chat_api_template.yaml
+#      Parameters:
+#        CHATEVENTBUSNAME: !ImportValue environmentStack--chatEventBusName
+#        ChatServiceLambdaExecutionRoleArn: !GetAtt chatServiceLambdaFunctionExecutionRole.Arn
+
+  chatEventsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./chat_events_template.yaml
+      Parameters:
+        CHATEVENTBUSNAME: !FindInMap [ environmentSpecificValues, "STUB_ACCOUNT_ID", chatEventBusName ]
+        chatServiceLambdaExecutionRole: !GetAtt chatServiceLambdaExecutionRole.Arn
+
+  chatServiceLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # Role Names should be region pre-fixed. Or the world explodes!
+      RoleName: !Join [ "-", [ !Ref "AWS::Region", "chatServiceLambdaExecutionRole" ] ]
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Description: "Chat Service function execution role"
+
+  putTracesToXrayPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: putTracesToXrayPolicy
+      Roles:
+        - !Ref chatServiceLambdaExecutionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "xray:PutTraceSegments"
+              - "xray:PutTelemetryRecords"
+            Resource:
+              - "*"
+
