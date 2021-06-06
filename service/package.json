@@ -1,7 +1,7 @@
 {
   "name": "eventbridgepoc",
   "version": "1.0.0",
-  "description": "poc of deventbridge for refrence in internal blog",
+  "description": "poc of eventbridge for reference in internal blog",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
