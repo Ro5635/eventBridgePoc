@@ -5,7 +5,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Mappings:
   environmentSpecificValues:
-    'STUB_ACCOUNT_ID':
+    'STUBACCOUNTID':
       environmentName: dev
       chatEventBusName: chatEventBus
 
@@ -24,8 +24,8 @@ Resources:
     Properties:
       TemplateURL: ./chat_events_template.yaml
       Parameters:
-        CHATEVENTBUSNAME: !FindInMap [ environmentSpecificValues, "STUB_ACCOUNT_ID", chatEventBusName ]
-        chatServiceLambdaExecutionRole: !GetAtt chatServiceLambdaExecutionRole.Arn
+        CHATEVENTBUSNAME: !FindInMap [ environmentSpecificValues, "STUBACCOUNTID", chatEventBusName ]
+        ChatServiceLambdaExecutionRoleArn: !GetAtt chatServiceLambdaExecutionRole.Arn
 
   chatServiceLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -60,4 +60,26 @@ Resources:
               - "xray:PutTelemetryRecords"
             Resource:
               - "*"
+
+  pollChatEventsQueuePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: pollChatEventsQueuePolicy
+      Roles:
+        - !Ref chatServiceLambdaExecutionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "sqs:ChangeMessageVisibility"
+              - "sqs:ChangeMessageVisibilityBatch"
+              - "sqs:DeleteMessage"
+              - "sqs:DeleteMessageBatch"
+              - "sqs:GetQueueAttributes"
+              - "sqs:ReceiveMessage"
+            Resource:
+              - !Sub
+                - "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:${queueName}"
+                - queueName: chat-events
 

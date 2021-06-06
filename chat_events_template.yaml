@@ -6,7 +6,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Mappings:
   environmentSpecificValues:
-    'STUB_ACCOUNT_ID':
+    'STUBACCOUNTID':
       environmentName: dev
       defaultQueueMessageRetentionPeriodSeconds: 1209600
 
@@ -31,7 +31,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       # 1209600 is 14 days in seconds
-      MessageRetentionPeriod: !FindInMap [ environmentSpecificValues, "STUB_ACCOUNT_ID", defaultQueueMessageRetentionPeriodSeconds ]
+      MessageRetentionPeriod: !FindInMap [ environmentSpecificValues, "STUBACCOUNTID", defaultQueueMessageRetentionPeriodSeconds ]
       QueueName: chat-events
       ReceiveMessageWaitTimeSeconds: 5
       VisibilityTimeout: 90
