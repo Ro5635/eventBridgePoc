@@ -39,20 +39,23 @@ Resources:
   publishEventToChatEventBusFunction:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: build/adapters/event/chat/republish_events_from_chat_events_to_chat_event_bus.handler
+      Handler: build/adapters/event/chat/republish_event_from_queue_to_event_bus.handler
       Runtime: nodejs12.x
       CodeUri: ./service/
       Description: >-
         RePublishes Events from the chatService incoming events queue to the chatEventBus
       MemorySize: 128
       Timeout: 30
-      Policies:
-        - SQSSendMessagePolicy:
-            QueueName: !GetAtt ChatEventsQueue.QueueName
-        - SQSPollerPolicy:
-            QueueName: !GetAtt ChatEventsQueue.QueueName
-        - EventBridgePutEventsPolicy:
-            EventBusName: !Ref chatEventBus
+      AutoPublishAlias: getUserChatsFunction
+      Tracing: Active
+      Role: !Ref ChatServiceLambdaExecutionRoleArn
+#      Policies:
+#        - SQSSendMessagePolicy:
+#            QueueName: !GetAtt ChatEventsQueue.QueueName
+#        - SQSPollerPolicy:
+#            QueueName: !GetAtt ChatEventsQueue.QueueName
+#        - EventBridgePutEventsPolicy:
+#            EventBusName: !Ref chatEventBus
       Environment:
         Variables:
           CHAT_EVENT_BUS_NAME: !Ref chatEventBus
