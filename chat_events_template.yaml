@@ -36,26 +36,26 @@ Resources:
       ReceiveMessageWaitTimeSeconds: 5
       VisibilityTimeout: 90
 
+  ChatEventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ChatEventsTopic
+      TopicName: ChatEventsTopic
+
   publishEventToChatEventBusFunction:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: build/adapters/event/chat/republish_event_from_queue_to_event_bus.handler
+      Handler: build/adapters/event/republish_event_from_queue_to_event_bus.handler
       Runtime: nodejs12.x
       CodeUri: ./service/
       Description: >-
         RePublishes Events from the chatService incoming events queue to the chatEventBus
+        as event bridge cannot do this its self
       MemorySize: 128
       Timeout: 30
       AutoPublishAlias: getUserChatsFunction
       Tracing: Active
       Role: !Ref ChatServiceLambdaExecutionRoleArn
-#      Policies:
-#        - SQSSendMessagePolicy:
-#            QueueName: !GetAtt ChatEventsQueue.QueueName
-#        - SQSPollerPolicy:
-#            QueueName: !GetAtt ChatEventsQueue.QueueName
-#        - EventBridgePutEventsPolicy:
-#            EventBusName: !Ref chatEventBus
       Environment:
         Variables:
           CHAT_EVENT_BUS_NAME: !Ref chatEventBus
@@ -74,3 +74,207 @@ Resources:
       Action: "lambda:InvokeFunction"
       Principal: "sqs.amazonaws.com"
       SourceArn: !GetAtt ChatEventsQueue.Arn
+
+  #
+  # Service Routing Rules
+  #
+
+  chatServiceEventsPublishToChatEventsSNSRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Sends events emitted from chat service with union type 'chat.' to chat-events sns topic"
+      EventBusName: !Ref chatEventBus
+      EventPattern:
+        detail:
+          type:
+            - prefix: "chat."
+      State: 'ENABLED'
+      Targets:
+        - Arn: !Ref ChatEventsTopic
+          Id: chatEventsToChatEventsSNSTopic
+
+  chatServiceEventsPublishToChatEventsSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Sid: AllowServices
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: 'sns:Publish'
+            Resource:
+              - !Ref ChatEventsTopic
+      Topics:
+        - !Ref ChatEventsTopic
+
+  #
+  # Event Handlers
+  #
+
+  # User Service Event Handlers:
+
+  usersUserCreatedEventHandlerFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: build/adapters/event/users/user_created_event_handler.handler
+      Runtime: nodejs12.x
+      CodeUri: ./service/
+      Description: >-
+        Handles the users.userCreatedEvent
+      Role: !Ref ChatServiceLambdaExecutionRoleArn
+      AutoPublishAlias: usersUserCreatedEventHandlerFunction
+      Tracing: Active
+      Environment:
+        Variables:
+          CHAT_EVENT_BUS_NAME: !Ref CHATEVENTBUSNAME
+      MemorySize: 256
+      Timeout: 28
+
+  usersUserCreatedEventHandlerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers actions in response to users.userCreatedEvent"
+      EventBusName: !Ref chatEventBus
+      EventPattern:
+        detail:
+          type:
+            - "users.userCreatedEvent"
+      State: 'ENABLED'
+      Targets:
+        - Arn: !GetAtt usersUserCreatedEventHandlerFunction.Arn
+          Id: usersUserCreatedEventHandler
+
+  permissionInvokeLambdaForUsersUserCreatedEventHandlerFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: usersUserCreatedEventHandlerFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt usersUserCreatedEventHandlerRule.Arn
+
+
+  usersUserDeletedEventHandlerFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: build/adapters/event/users/user_deleted_event_handler.handler
+      Runtime: nodejs12.x
+      CodeUri: ./service/
+      Description: >-
+        Handles the users.userDeletedEvent
+      Role: !Ref ChatServiceLambdaExecutionRoleArn
+      AutoPublishAlias: usersUserDeletedEventHandlerFunction
+      Tracing: Active
+      Environment:
+        Variables:
+          CHAT_EVENT_BUS_NAME: !Ref CHATEVENTBUSNAME
+      MemorySize: 256
+      Timeout: 28
+
+  usersUserDeletedEventHandlerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers actions in response to users.userDeletedEvent"
+      EventBusName: !Ref chatEventBus
+      EventPattern:
+        detail:
+          type:
+            - "users.userDeletedEvent"
+      State: 'ENABLED'
+      Targets:
+        - Arn: !GetAtt usersUserDeletedEventHandlerFunction.Arn
+          Id: usersUserDeletedEventHandler
+
+  permissionInvokeLambdaForUsersUserDeletedEventHandlerFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: usersUserDeletedEventHandlerFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt usersUserDeletedEventHandlerRule.Arn
+
+  # Team Service Event Handlers:
+
+  teamsTeamMembershipCreatedHandlerFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: build/adapters/event/teams/team_membership_created_event_handler.handler
+      Runtime: nodejs12.x
+      CodeUri: ./service/
+      Description: >-
+        Handles the teams.teamMembershipCreatedEvent
+      Role: !Ref ChatServiceLambdaExecutionRoleArn
+      AutoPublishAlias: teamsTeamMembershipCreatedHandlerFunction
+      Tracing: Active
+      Environment:
+        Variables:
+          CHAT_EVENT_BUS_NAME: !Ref CHATEVENTBUSNAME
+      MemorySize: 256
+      Timeout: 28
+
+  teamsTeamMembershipCreatedHandlerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers actions in response to teams.teamMembershipCreatedEvent"
+      EventBusName: !Ref chatEventBus
+      EventPattern:
+        detail:
+          type:
+            - "teams.teamMembershipCreatedEvent"
+      State: 'ENABLED'
+      Targets:
+        - Arn: !GetAtt teamsTeamMembershipCreatedHandlerFunction.Arn
+          Id: teamsTeamMembershipCreatedHandler
+
+  permissionInvokeLambdaForTeamsTeamMembershipCreatedHandlerFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: teamsTeamMembershipCreatedHandlerFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt teamsTeamMembershipCreatedHandlerRule.Arn
+
+
+  teamsTeamMembershipDeletedHandlerFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: build/adapters/event/teams/team_membership_deleted_event_handler.handler
+      Runtime: nodejs12.x
+      CodeUri: ./service/
+      Description: >-
+        Handles the teams.teamMembershipDeletedEvent
+      Role: !Ref ChatServiceLambdaExecutionRoleArn
+      AutoPublishAlias: teamsTeamMembershipDeletedHandlerFunction
+      Tracing: Active
+      Environment:
+        Variables:
+          CHAT_EVENT_BUS_NAME: !Ref CHATEVENTBUSNAME
+      MemorySize: 256
+      Timeout: 28
+
+  teamsTeamMembershipDeletedHandlerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers actions in response to teams.teamMembershipDeletedEvent"
+      EventBusName: !Ref chatEventBus
+      EventPattern:
+        detail:
+          type:
+            - "teams.teamMembershipDeletedEvent"
+      State: 'ENABLED'
+      Targets:
+        - Arn: !GetAtt teamsTeamMembershipDeletedHandlerFunction.Arn
+          Id: teamsTeamMembershipDeletedHandler
+
+  permissionInvokeLambdaForTeamsTeamMembershipDeletedHandlerFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: teamsTeamMembershipDeletedHandlerFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt teamsTeamMembershipDeletedHandlerRule.Arn
