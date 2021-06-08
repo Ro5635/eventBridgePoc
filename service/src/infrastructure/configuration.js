@@ -8,7 +8,7 @@ import validate from './utilities/joi_validation_with_throws';
 // import authorizationClaimsExtractorFactory from './utilities/authorization_claims_extractor';
 import removeUndefinedKeys from './utilities/remove_undefined_keys';
 import getSSMParamsFactory from './utilities/get_from_param_store';
-// import sanitiseAndParseJSON from './utilities/sanitise_and_parse_json';
+import sanitiseAndParseJSON from './utilities/sanitise_and_parse_json';
 import restErrorHandlerFactory from './utilities/rest_error_handler';
 
 const aws = xray.captureAWS(awsSdk);
@@ -18,7 +18,7 @@ const {
   CHAT_EVENT_BUS_NAME,
 } = process.env;
 
-const REGION = 'eu-west-2';
+const REGION = 'eu-west-1';
 const logLevel = 'DEBUG';
 const isRunningLocally = process.env.AWS_SAM_LOCAL === 'true';
 
@@ -74,6 +74,7 @@ const utilities = {
   removeUndefinedKeys,
   getSSMParams,
   restErrorHandler,
+  sanitiseAndParseJSON,
 };
 
 export {

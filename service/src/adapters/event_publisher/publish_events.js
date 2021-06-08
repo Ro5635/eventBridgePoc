@@ -1,5 +1,5 @@
 import {
-  logger, eventBridge, environment, errors,
+  logger, sqs, environment, errors,
 } from '../../infrastructure/configuration';
 
 const { CHAT_EVENT_BUS_NAME } = environment;

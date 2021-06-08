@@ -8,8 +8,8 @@
     "build": "babel src -d build && npm run lint-fix",
     "lint-fix": "eslint . --fix",
     "ci-clean": "rm -r ./src && rm -r ./test && find ./node_modules/ -type f -exec touch -t 201601011200 '{}' \\;",
-    "package": "aws cloudformation package --template-file ../infrastructure_template.yaml --s3-bucket robert-curran-cf-templates-eu-west-2 --s3-prefix eventBridgePoc  --region eu-west-2 --output-template-file ../chat-packaged.yaml --profile robertCurranAccount",
-    "deploy": "aws cloudformation deploy --template-file ../chat-packaged.yaml --stack-name eventBridgePoc --region eu-west-2 --s3-bucket robert-curran-cf-templates-eu-west-2 --s3-prefix eventBridgePoc --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --profile robertCurranAccount",
+    "package": "aws cloudformation package --template-file ../infrastructure_template.yaml --s3-bucket robertcurran-assorted-mess-userpool-backup --s3-prefix eventBridgePoc  --region eu-west-1 --output-template-file ../chat-packaged.yaml --profile robertCurranAccount",
+    "deploy": "aws cloudformation deploy --template-file ../chat-packaged.yaml --stack-name eventBridgePoc --region eu-west-1 --s3-bucket robertcurran-assorted-mess-userpool-backup --s3-prefix eventBridgePoc --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --profile robertCurranAccount",
     "publish": "npm run package && npm run deploy && echo Finished!! 🥳"
   },
   "dependencies": {
@@ -17,7 +17,8 @@
     "@travel-cloud/simple-lambda-logger": "^2.0.3",
     "aws-xray-sdk": "^3.3.3",
     "random-test-values": "^2.0.0",
-    "uuid": "^8.0.0"
+    "uuid": "^8.0.0",
+    "xss": "^1.0.9"
   },
   "devDependencies": {
     "aws-sdk": "^2.771.0",
