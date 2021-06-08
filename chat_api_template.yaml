@@ -1,0 +1,89 @@
+# Infrastructure Template chatService Api Infrastructure
+#
+# This template contains all the infrastructure for the chat api
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Mappings:
+  environmentSpecificValues:
+    'STUBACCOUNTID':
+      environmentName: dev
+      defaultQueueMessageRetentionPeriodSeconds: 1209600
+      chatServiceApiEnhancedMetricsEnabled: true
+
+Parameters:
+  CHATEVENTBUSNAME:
+    Type: String
+    Default: NOT_SUPPLIED
+    Description: chat service event bus name
+  ChatServiceLambdaExecutionRoleArn:
+    Type: String
+    Default: NOT_SUPPLIED
+    Description: chat service lambda execution role arn
+
+Resources:
+
+  #
+  #  REST API: chat.SOME_DOMAIN.com
+  #
+
+  chatApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: chatService API
+      StageName: v0
+      Description: "chatService API"
+      CacheClusterEnabled: false
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          MetricsEnabled: !FindInMap [environmentSpecificValues, "STUBACCOUNTID", chatServiceApiEnhancedMetricsEnabled]
+      Cors:
+        AllowHeaders: "'Authorization, content-type'"
+        AllowOrigin: "'*'"
+        MaxAge: "'7200'"
+#      Auth:
+#        DefaultAuthorizer: cognitoAuthorizer
+#        AddDefaultAuthorizerToCorsPreflight: false # removes auth requirement from 'options' pre-flight requests
+#        Authorizers:
+#          cognitoAuthorizer:
+#            UserPoolArn: !ImportValue authenticationService-MeetBelUserPoolARN
+#      Domain:
+#        DomainName: !FindInMap [ environmentSpecificValues, !Ref "AWS::AccountId", chatServiceAPIDomainName ]
+#        CertificateArn: !ImportValue environmentStack--meetBelComSSLSSLCertificateEUWest2
+#        Route53:
+#          HostedZoneId: !ImportValue environmentStack--meetBelComHostedZoneID
+      TracingEnabled: true
+      GatewayResponses:
+        DEFAULT_4xx:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+        DEFAULT_5xx:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+
+  putEvent:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: build/adapters/rest/events/put_event.handler
+      Runtime: nodejs12.x
+      Role: !Ref ChatServiceLambdaExecutionRoleArn
+      CodeUri: ./service/
+      Description: >-
+        Allows a caller to put an event to the chat-events incoming SQS Queue
+      MemorySize: 256
+      Timeout: 29
+      Environment:
+        Variables:
+          CHAT_EVENT_BUS_NAME: !Ref CHATEVENTBUSNAME
+      AutoPublishAlias: putEvent
+      Tracing: Active
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            RestApiId: !Ref chatApi
+            Path: /events
+            Method: PUT
