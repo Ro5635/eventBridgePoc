@@ -26,7 +26,7 @@ function App() {
                 </em>
             </article>
             <article>
-                <img style={imageDiagramStyle} src={eventBridgeEventFlowImage}/>
+                <img style={imageDiagramStyle} src={eventBridgeEventFlowImage} alt={"basic service architecture diagram"}/>
             </article>
         </section>
         <section style={servicesContainer}>
