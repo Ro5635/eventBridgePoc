@@ -11,6 +11,10 @@ Mappings:
 
 Resources:
 
+  #
+  # Sub Stacks
+  #
+
   chatApiStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -26,6 +30,15 @@ Resources:
       Parameters:
         CHATEVENTBUSNAME: !FindInMap [ environmentSpecificValues, "STUBACCOUNTID", chatEventBusName ]
         ChatServiceLambdaExecutionRoleArn: !GetAtt chatServiceLambdaExecutionRole.Arn
+
+  chatSaticWebsiteStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./chat_website_template.yaml
+
+  #
+  # Shared Resources
+  #
 
   chatServiceLambdaExecutionRole:
     Type: AWS::IAM::Role
