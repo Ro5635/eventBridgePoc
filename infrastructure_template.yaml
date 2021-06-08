@@ -11,13 +11,13 @@ Mappings:
 
 Resources:
 
-#  chatApiStack:
-#    Type: AWS::CloudFormation::Stack
-#    Properties:
-#      TemplateURL: ./chat_api_template.yaml
-#      Parameters:
-#        CHATEVENTBUSNAME: !ImportValue environmentStack--chatEventBusName
-#        ChatServiceLambdaExecutionRoleArn: !GetAtt chatServiceLambdaFunctionExecutionRole.Arn
+  chatApiStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./chat_api_template.yaml
+      Parameters:
+        CHATEVENTBUSNAME: !FindInMap [ environmentSpecificValues, "STUBACCOUNTID", chatEventBusName ]
+        ChatServiceLambdaExecutionRoleArn: !GetAtt chatServiceLambdaExecutionRole.Arn
 
   chatEventsStack:
     Type: AWS::CloudFormation::Stack
