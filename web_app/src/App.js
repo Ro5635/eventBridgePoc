@@ -1,3 +1,4 @@
+import React from 'react';
 import './App.css';
 import Button from '@material-ui/core/Button';
 import {
@@ -8,8 +9,36 @@ import {
 } from './services/chat_service/chat_service';
 import eventBridgeEventFlowImage from '../src/images/eventBridgeEventFlow.png';
 
+import Snackbar from '@material-ui/core/Snackbar';
+import MuiAlert from '@material-ui/lab/Alert';
+import { makeStyles } from '@material-ui/core/styles';
+
+function Alert(props) {
+    return <MuiAlert elevation={6} variant="filled" {...props} />;
+}
+
+const useStyles = makeStyles((theme) => ({
+    root: {
+        width: '100%',
+        '& > * + *': {
+            marginTop: theme.spacing(2),
+        },
+    },
+}));
+
 
 function App() {
+    const classes = useStyles();
+    const [openToast, setToastOpen] = React.useState(false);
+    const wrapCallWithToast = async (call) => {
+        // This is not how things should be done in React
+        await call();
+        setToastOpen(true);
+    }
+    const closeSubmittedEventToast = () => {
+        setToastOpen(false);
+    }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -38,8 +67,8 @@ function App() {
                     </p>
                 </div>
                 <div style={serviceContainer_btnGroup}>
-                    <Button onClick={sendTeamMembershipCreatedEvent} variant="contained">teams.teamMembershipCreatedEvent</Button>
-                    <Button onClick={sendTeamMembershipDeletedEvent} variant="contained">teams.teamMembershipDeletedEvent</Button>
+                    <Button onClick={() => {wrapCallWithToast(sendTeamMembershipCreatedEvent)}} variant="contained">teams.teamMembershipCreatedEvent</Button>
+                    <Button onClick={() => {wrapCallWithToast(sendTeamMembershipDeletedEvent)}} variant="contained">teams.teamMembershipDeletedEvent</Button>
                 </div>
             </article>
             <article style={serviceContainer}>
@@ -50,15 +79,27 @@ function App() {
                     </p>
                 </div>
                 <div style={serviceContainer_btnGroup}>
-                    <Button onClick={sendUserCreatedEvent} variant="contained">users.userCreatedEvent</Button>
-                    <Button onClick={sendUserDeletedEvent} variant="contained">users.userDeletedEvent</Button>
+                    <Button onClick={() => {wrapCallWithToast(sendUserCreatedEvent)}} variant="contained">users.userCreatedEvent</Button>
+                    <Button onClick={() => {wrapCallWithToast(sendUserDeletedEvent)}} variant="contained">users.userDeletedEvent</Button>
                 </div>
             </article>
 
         </section>
+
+        {/* Imagine this being in a component*/}
+        <Snackbar
+            anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+            }}
+            open={openToast}
+            autoHideDuration={2000}
+            onClose={closeSubmittedEventToast}
+            message="Event Sent To chat-events SQS Queue 🥳"
+        />
     </div>
   );
-}
+};
 
 // These styles fall apart on mobile 😅 Don't use mobile pls.
 
