@@ -6,7 +6,7 @@ This creates an imaginary chat service that uses EventBridge to route events fro
 
 To publish events the service publishes events to the chatEventBus, all events published by the chat service (identified by the union type `chat.*`) are then sent to the chat service chat-events SNS topic. This means that other domains are coupled to this service in an identical manner to pure SNS/SQS means.
 
-##Service Architecture Diagram:
+## Service Architecture Diagram:
 
 ![alt text](./images/chatServiceEventFlow.png)
 
